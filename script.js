@@ -49,11 +49,6 @@ function formatCourseName(name) {
     return name;
 }
 
-function timeToMinutes(timeStr) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
 function horaAIndex(horaStr) {
     try {
         const t = timeToMinutes(horaStr);
@@ -62,9 +57,9 @@ function horaAIndex(horaStr) {
             const s = timeToMinutes(TIME_SLOTS[i].start);
             const e = timeToMinutes(TIME_SLOTS[i].end);
             
-            // Match exactly at start
+            // Inicio exacto
             if (t === s) return i;
-            // Match if time is within slot (inclusive at end)
+            // La hora está dentro del slot (incluyendo el final)
             if (t > s && t <= e) return i;
         }
         console.warn(`No se encontró slot para la hora ${horaStr}`);
@@ -658,6 +653,11 @@ function isValidCombination(combination) {
     return true;
 }
 
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
 function schedulesConflict(schedules1, schedules2) {
     for (const s1 of schedules1) {
         for (const s2 of schedules2) {
@@ -667,8 +667,17 @@ function schedulesConflict(schedules1, schedules2) {
                 const start2 = timeToMinutes(s2.start);
                 const end2 = timeToMinutes(s2.end);
                 
-                // Verificar solapamiento
-                if (!(end1 <= start2 || end2 <= start1)) {
+                // Si cualquier borde se solapa, hay conflicto
+                if (
+                    // s1 empieza durante s2
+                    (start1 >= start2 && start1 < end2) ||
+                    // s1 termina durante s2  
+                    (end1 > start2 && end1 <= end2) ||
+                    // s1 contiene completamente a s2
+                    (start1 <= start2 && end1 >= end2) ||
+                    // s2 contiene completamente a s1
+                    (start2 <= start1 && end2 >= end1)
+                ) {
                     return true;
                 }
             }
@@ -734,14 +743,40 @@ function previewCombination(index) {
         item.classList.remove('selected');
     });
     document.querySelectorAll('.combination-item')[index].classList.add('selected');
+    
+    // Scroll al horario
+    document.getElementById('schedule-grid').scrollIntoView({ behavior: 'smooth' });
 }
 
 function renderSchedulePreview(combination, combinationNumber) {
     const container = document.getElementById('schedule-grid');
     const summaryContainer = document.getElementById('schedule-summary');
     
-    // Crear estructura base
-    container.innerHTML = createScheduleTable();
+    // Crear tabla base con overlay
+    container.innerHTML = `
+        <div class="schedule-wrapper">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th class="time-column">Hora</th>
+                        ${DAYS.map(day => `<th>${day}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${TIME_SLOTS.map(slot => `
+                        <tr>
+                            <td class="time-column">
+                                <span class="time-start">${slot.start}</span>
+                                <span class="time-end">${slot.end}</span>
+                            </td>
+                            ${DAYS.map(() => '<td></td>').join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="blocks-overlay"></div>
+        </div>
+    `;
     
     // Preparar overlay para bloques
     const overlay = container.querySelector('.blocks-overlay');
@@ -764,11 +799,12 @@ function renderSchedulePreview(combination, combinationNumber) {
                 return;
             }
             
-            // Calcular dimensiones (endIndex inclusivo)
-            const height = (endIndex - startIndex + 1) * 48; // ROW_HEIGHT = 48px
-            const top = startIndex * 48;
-            const width = `${100 / DAYS.length}%`;
-            const left = `${(dayIndex * 100) / DAYS.length}%`;
+            // Calcular dimensiones precisas (endIndex inclusivo)
+            const rowHeight = 48; // Altura de cada fila
+            const height = ((endIndex - startIndex + 1) * rowHeight) - 2; // -2 para bordes
+            const top = (startIndex * rowHeight) + 1; // +1 para el borde superior
+            const width = `calc(${100 / DAYS.length}% - 2px)`; // -2 para bordes laterales
+            const left = `calc(${(dayIndex * 100) / DAYS.length}% + 1px)`; // +1 para el borde izquierdo
             
             const block = document.createElement('div');
             block.className = `schedule-block color-${courseColors.get(group.courseCode)}`;
@@ -779,10 +815,27 @@ function renderSchedulePreview(combination, combinationNumber) {
                 height: ${height}px;
             `;
             
+            // Agregar información del curso
             block.innerHTML = `
                 <div class="course-name">${formatCourseName(group.courseName)}</div>
                 <div class="group-info">Grupo ${group.group}</div>
             `;
+            
+            // Agregar tooltip detallado
+            block.title = `${group.courseName}
+Grupo ${group.group}
+${schedule.day} ${schedule.start} - ${schedule.end}`;
+            
+            // Agregar manejador de eventos para hover
+            block.addEventListener('mouseenter', () => {
+                block.style.zIndex = '10';
+                block.style.transform = 'scale(1.02)';
+            });
+            
+            block.addEventListener('mouseleave', () => {
+                block.style.zIndex = '1';
+                block.style.transform = 'none';
+            });
             
             overlay.appendChild(block);
         });
@@ -791,6 +844,20 @@ function renderSchedulePreview(combination, combinationNumber) {
     // Actualizar información y resumen
     document.getElementById('preview-info').textContent = `Combinación ${combinationNumber}`;
     summaryContainer.innerHTML = createScheduleSummary(combination);
+    
+    // Agregar interactividad a los bloques
+    document.querySelectorAll('.schedule-block').forEach(block => {
+        block.addEventListener('click', () => {
+            // Resaltar temporalmente el bloque clickeado
+            block.style.transform = 'scale(1.05)';
+            setTimeout(() => block.style.transform = 'none', 200);
+            
+            // Opcional: Mostrar un toast con la información del curso
+            const courseName = block.querySelector('.course-name').textContent;
+            const groupInfo = block.querySelector('.group-info').textContent;
+            showToast(`${courseName} - ${groupInfo}`);
+        });
+    });
 }
 
 function createScheduleTable(combination) {
@@ -938,59 +1005,138 @@ function createScheduleSummary(combination) {
 
 // ===== EXPORTAR E IMPORTAR CONFIGURACIÓN =====
 function exportarConfiguracion() {
-    const config = {
-        selectedSemesters: appState.selectedSemesters,
-        selectedCourses: appState.selectedCourses,
-        courseSchedules: appState.courseSchedules
-    };
-    
-    const dataStr = JSON.stringify(config, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = 'configuracion-horarios.json';
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    showToast('Configuración exportada exitosamente');
+    try {
+        // Validar que hay algo para exportar
+        if (appState.selectedSemesters.length === 0) {
+            showToast('No hay semestres seleccionados para exportar', 'warning');
+            return;
+        }
+
+        if (Object.keys(appState.selectedCourses).length === 0) {
+            showToast('No hay cursos seleccionados para exportar', 'warning');
+            return;
+        }
+
+        const config = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            selectedSemesters: appState.selectedSemesters,
+            selectedCourses: appState.selectedCourses,
+            courseSchedules: appState.courseSchedules,
+            summary: {
+                totalCredits: Object.values(appState.selectedCourses)
+                    .reduce((sum, course) => sum + course.creditos, 0),
+                totalCourses: Object.keys(appState.selectedCourses).length,
+                configuredCourses: Object.keys(appState.courseSchedules).length
+            }
+        };
+        
+        const dataStr = JSON.stringify(config, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const dataUrl = URL.createObjectURL(blob);
+        
+        const timestamp = new Date().toISOString().split('T')[0];
+        const exportFileDefaultName = `horarios_${timestamp}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.href = dataUrl;
+        linkElement.download = exportFileDefaultName;
+        document.body.appendChild(linkElement);
+        linkElement.click();
+        document.body.removeChild(linkElement);
+        URL.revokeObjectURL(dataUrl);
+        
+        showToast('Configuración exportada exitosamente');
+        
+    } catch (error) {
+        console.error('Error al exportar:', error);
+        showToast('Error al exportar la configuración: ' + error.message, 'error');
+    }
 }
 
 function importarConfiguracion() {
-    document.getElementById('file-input').click();
+    try {
+        // Crear un input temporal
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = (event) => handleFileImport(event);
+        
+        // Trigger el diálogo de selección de archivo
+        input.click();
+        
+    } catch (error) {
+        console.error('Error al abrir selector de archivos:', error);
+        showToast('Error al abrir el selector de archivos', 'error');
+    }
 }
 
 function handleFileImport(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Validar tipo de archivo
+    if (!file.name.toLowerCase().endsWith('.json')) {
+        showToast('Por favor selecciona un archivo JSON válido', 'error');
+        return;
+    }
+    
     const reader = new FileReader();
+    
+    reader.onerror = () => {
+        showToast('Error al leer el archivo', 'error');
+    };
+    
     reader.onload = function(e) {
         try {
             const config = JSON.parse(e.target.result);
             
-            // Validar estructura básica
-            if (!config.selectedSemesters || !config.selectedCourses || !config.courseSchedules) {
-                throw new Error('Formato de archivo inválido');
+            // Validar versión y estructura
+            if (!config.version || !config.selectedSemesters || 
+                !config.selectedCourses || !config.courseSchedules) {
+                throw new Error('Formato de archivo inválido o incompatible');
             }
             
-            // Cargar configuración
-            appState.selectedSemesters = config.selectedSemesters;
-            appState.selectedCourses = config.selectedCourses;
-            appState.courseSchedules = config.courseSchedules;
+            // Validar integridad de datos
+            const coursesMatch = Object.keys(config.selectedCourses).every(code => {
+                // Verificar que el curso existe en el plan de estudios
+                return Object.values(PLAN_ESTUDIOS).some(semester => 
+                    semester.hasOwnProperty(code)
+                );
+            });
             
-            // Actualizar interfaz
-            renderSemesters();
-            renderCourses();
-            updateCreditsCounter();
-            updateCoursesCounter();
-            updateCourseSelect();
-            renderCurrentConfiguration();
+            if (!coursesMatch) {
+                throw new Error('El archivo contiene cursos que no existen en el plan de estudios actual');
+            }
             
-            showToast('Configuración importada exitosamente');
+            // Backup del estado actual por si hay error
+            const prevState = { ...appState };
+            
+            try {
+                // Cargar configuración
+                appState.selectedSemesters = config.selectedSemesters;
+                appState.selectedCourses = config.selectedCourses;
+                appState.courseSchedules = config.courseSchedules;
+                
+                // Actualizar interfaz
+                renderSemesters();
+                renderCourses();
+                updateCreditsCounter();
+                updateCoursesCounter();
+                updateCourseSelect();
+                renderCurrentConfiguration();
+                
+                showToast(`Configuración importada exitosamente: ${config.summary.totalCourses} cursos, ${config.summary.totalCredits} créditos`);
+                
+            } catch (updateError) {
+                // Restaurar estado previo si hay error al actualizar la UI
+                appState = prevState;
+                throw new Error('Error al actualizar la interfaz: ' + updateError.message);
+            }
             
         } catch (error) {
+            console.error('Error al importar:', error);
             showToast('Error al importar la configuración: ' + error.message, 'error');
         }
     };
