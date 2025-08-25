@@ -968,9 +968,9 @@ function exportSelectedPDF() {
     
     showToast('Generando PDF...', 'warning');
     
-    // Usar jsPDF para generar el PDF
+    // Usar jsPDF para generar el PDF en modo portrait para mejor ajuste
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('l', 'mm', 'a4'); // landscape, milímetros, A4
+    const pdf = new jsPDF('p', 'mm', 'a4'); // portrait, milímetros, A4
     
     selectedIndexes.forEach((index, pageIndex) => {
         if (pageIndex > 0) pdf.addPage();
@@ -1002,10 +1002,28 @@ function exportSelectedPDF() {
             allowTaint: false
         }).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
-            const imgWidth = 297; // A4 width in mm (landscape)
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            // Calcular dimensiones óptimas para el PDF
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
             
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            // Calcular relación de aspecto y escalar manteniendo proporciones
+            const imgAspect = canvas.width / canvas.height;
+            const pageAspect = pageWidth / pageHeight;
+            
+            let renderWidth = pageWidth;
+            let renderHeight = pageWidth / imgAspect;
+            
+            // Si la altura excede la página, ajustar por altura
+            if (renderHeight > pageHeight) {
+                renderHeight = pageHeight;
+                renderWidth = pageHeight * imgAspect;
+            }
+            
+            // Centrar en la página
+            const x = (pageWidth - renderWidth) / 2;
+            const y = (pageHeight - renderHeight) / 2;
+            
+            pdf.addImage(imgData, 'PNG', x, y, renderWidth, renderHeight);
             
             document.body.removeChild(tempDiv);
             
@@ -1064,6 +1082,66 @@ function getSelectedCombinations() {
         });
     return selected;
 }
+
+/**
+ * Función de debug expuesta globalmente para inspeccionar el estado de la aplicación
+ * @returns {Object} Estado actual de la aplicación con estadísticas
+ */
+function debugState() {
+    const debug = {
+        selectedCourses: {
+            count: Object.keys(appState.selectedCourses).length,
+            courses: Object.fromEntries(
+                Object.entries(appState.selectedCourses).map(([code, info]) => [
+                    code,
+                    {
+                        nombre: info.nombre,
+                        creditos: info.creditos
+                    }
+                ])
+            )
+        },
+        courseSchedules: {
+            count: Object.keys(appState.courseSchedules).length,
+            coursesWithSchedules: Object.fromEntries(
+                Object.entries(appState.courseSchedules).map(([code, groups]) => [
+                    code,
+                    {
+                        groupCount: Object.keys(groups).length,
+                        totalSchedules: Object.values(groups).reduce(
+                            (sum, g) => sum + (g.schedules?.length || 0), 0
+                        ),
+                        validSchedules: Object.values(groups).reduce(
+                            (sum, g) => sum + (g.schedules?.filter(s => 
+                                horaAIndex(s.start) !== null && 
+                                horaAIndex(s.end) !== null &&
+                                DAYS.includes(s.day)
+                            ).length || 0), 0
+                        )
+                    }
+                ])
+            )
+        },
+        combinations: {
+            count: appState.generatedCombinations.length,
+            currentPreview: appState.currentPreview ? {
+                index: appState.currentPreview.index,
+                courseCount: appState.currentPreview.combination.length
+            } : null
+        }
+    };
+
+    console.log('=== Estado de la Aplicación ===');
+    console.table(debug.selectedCourses.courses);
+    console.log('Cursos seleccionados:', debug.selectedCourses.count);
+    console.log('Cursos con horarios:', debug.courseSchedules.count);
+    console.log('Combinaciones generadas:', debug.combinations.count);
+    
+    return debug;
+}
+
+// Exponer para uso en consola
+window.debugState = debugState;
 
 // Función para debugging del estado de la aplicación
 function debugState() {
