@@ -9,8 +9,44 @@ let appState = {
 
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
+    cargarDatos().then(() => {
+        initializeApp();
+    }).catch(error => {
+        console.error('Error al cargar datos:', error);
+        showToast('Error al cargar los datos: ' + error.message, 'error');
+    });
 });
+
+async function cargarDatos() {
+    try {
+        // Cargar el archivo JSON usando fetch
+        const response = await fetch('data.js');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.text();
+        
+        // Ejecutar el contenido del archivo JS de forma segura
+        const script = document.createElement('script');
+        script.textContent = data;
+        document.head.appendChild(script);
+        document.head.removeChild(script);
+        
+        // Verificar que los datos necesarios estén definidos
+        if (typeof PLAN_ESTUDIOS === 'undefined' || 
+            typeof DAYS === 'undefined' || 
+            typeof TIME_SLOTS === 'undefined' || 
+            typeof GROUPS === 'undefined') {
+            throw new Error('Datos incompletos en el archivo');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error al cargar datos:', error);
+        showToast('Error al cargar los datos. Por favor recarga la página.', 'error');
+        throw error;
+    }
+}
 
 function initializeApp() {
     renderSemesters();
