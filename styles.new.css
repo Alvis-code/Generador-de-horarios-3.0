@@ -1,0 +1,230 @@
+:root {
+    /* Paleta Ingeniería Industrial */
+    --primary: #0b6b3a;    /* Verde industrial oscuro */
+    --secondary: #0ea5a0;  /* Verde azulado - procesos */
+    --accent: #f97316;     /* Naranja - seguridad industrial */
+    --warning: #eab308;    /* Amarillo - precaución */
+    --danger: #dc2626;     /* Rojo - peligro */
+    --success: #16a34a;    /* Verde - éxito */
+    
+    /* Colores base */
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    
+    /* Dimensiones y espaciado */
+    --row-height: 48px;
+    --time-column-width: 92px;
+    --radius: 8px;
+    --shadow: 0 4px 12px rgba(11, 107, 58, 0.1);
+    
+    /* Colores de cursos (alta saturación, buen contraste) */
+    --course-color-1: #115e59; /* Verde azulado oscuro - Procesos */
+    --course-color-2: #0e7490; /* Azul industrial - Gestión */
+    --course-color-3: #0b6b3a; /* Verde industrial - Calidad */
+    --course-color-4: #854d0e; /* Marrón - Materiales */
+    --course-color-5: #c2410c; /* Naranja oscuro - Seguridad */
+    --course-color-6: #1e40af; /* Azul oscuro - Logística */
+    --course-color-7: #9f1239; /* Rojo oscuro - Control */
+    --course-color-8: #3730a3; /* Índigo - Proyectos */
+    --course-color-9: #6d28d9; /* Violeta - Investigación */
+    --course-color-10: #166534; /* Verde bosque - Medio ambiente */
+}
+
+/* Reset y base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+        transform: none !important;
+    }
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* Botones y controles interactivos */
+.btn {
+    background: var(--primary);
+    color: white;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1),
+                box-shadow 0.2s ease,
+                background-color 0.2s ease;
+    box-shadow: var(--shadow);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(11, 107, 58, 0.25);
+    filter: brightness(1.1);
+}
+
+.btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.btn:focus-visible {
+    outline: 3px solid rgba(11, 107, 58, 0.2);
+    outline-offset: 2px;
+}
+
+/* Controles de formulario */
+select, input[type="checkbox"] {
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: white;
+    color: var(--text);
+}
+
+select:hover {
+    border-color: var(--primary);
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 107, 58, 0.1);
+}
+
+/* Horario y rejilla */
+.schedule-wrapper {
+    position: relative;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.schedule-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.schedule-table tr {
+    height: var(--row-height);
+}
+
+.schedule-table td, 
+.schedule-table th {
+    padding: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+}
+
+.schedule-table th {
+    background: var(--bg);
+    color: var(--text);
+    font-weight: 500;
+}
+
+.time-column {
+    width: var(--time-column-width);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    background: var(--bg) !important;
+}
+
+/* Overlay y bloques de horario */
+.blocks-overlay {
+    position: absolute;
+    left: var(--time-column-width);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.schedule-block {
+    position: absolute;
+    padding: 8px;
+    border-radius: calc(var(--radius) - 2px);
+    color: white;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    pointer-events: auto;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-block:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.course-name {
+    font-size: 0.875rem;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.group-info {
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+/* Colores de bloques con buen contraste */
+[class*="color-"] {
+    color: white; /* Texto siempre blanco por el fondo oscuro */
+}
+
+.color-1 { background: var(--course-color-1); }
+.color-2 { background: var(--course-color-2); }
+.color-3 { background: var(--course-color-3); }
+.color-4 { background: var(--course-color-4); }
+.color-5 { background: var(--course-color-5); }
+.color-6 { background: var(--course-color-6); }
+.color-7 { background: var(--course-color-7); }
+.color-8 { background: var(--course-color-8); }
+.color-9 { background: var(--course-color-9); }
+.color-10 { background: var(--course-color-10); }
+
+/* Estados y feedback */
+.toast {
+    background: var(--card);
+    color: var(--text);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px 16px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Accesibilidad */
+@media (forced-colors: active) {
+    .btn, .schedule-block {
+        border: 1px solid currentColor;
+    }
+}
